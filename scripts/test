@@ -1,0 +1,13 @@
+#! /bin/bash -e
+
+set -x
+
+./scripts/lint
+
+uvicorn tests.server:app --log-level critical --port 7575 &
+
+while [[ ! $(curl http://127.0.0.1:7575) ]]; do
+  sleep 0.5
+done
+
+pytest
