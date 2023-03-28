@@ -3,6 +3,8 @@ import typing
 from abc import ABC
 from abc import abstractmethod
 from enum import Enum
+from enum import auto
+from . import config
 
 import requests
 
@@ -29,13 +31,14 @@ RESPONSES = typing.Union["HttpxResponse", "RequestsResponse"]
 
 
 class Engine(ABC):
+
     @abstractmethod
-    def _convert_request(self, curl_request: "CurlRequest") -> REQUESTS:
+    def _convert_request(self, curl_request: "CurlRequest") -> typing.Tuple[REQUESTS, typing.Dict[str, str]]:
         ...
 
     @abstractmethod
     def _send(
-        self, request: "RequestsRequest", curl_request: "CurlRequest"
+            self, request: "RequestsRequest", curl_request: "CurlRequest", proxies: typing.Dict[str, str]
     ) -> "RequestsResponse":
         ...
 
@@ -49,7 +52,7 @@ class requestsEngine(Engine):
         "Accept": "*/*",
     }
 
-    def _convert_request(self, curl_request: "CurlRequest") -> "RequestsRequest":
+    def _convert_request(self, curl_request: "CurlRequest") -> typing.Tuple["RequestsRequest", typing.Dict[str, str]]:
         from requests import Request
 
         url = curl_request.url
@@ -70,37 +73,49 @@ class requestsEngine(Engine):
         if form is None:
             form = {}
 
+        proxies = {}
+        if config.HTTPS_PROXY:
+            proxies['https'] = config.HTTPS_PROXY
+        if config.HTTP_PROXY:
+            proxies['http'] = config.HTTP_PROXY
+
         for key, value in form.items():
             if value[0] == "@":
                 filename = value[1:]
                 cleaned_form[key] = (filename, open(filename, "rb"))
 
-        headers.update(self.DEFAULT_HEADERS)
         headers["User-Agent"] = user_agent or DEFAULT_USER_AGENT
+
+        merged_headers = self.DEFAULT_HEADERS
+        merged_headers.update(headers)
 
         req = Request(
             url=url,
             method=method,
             data=data,
             files=cleaned_form,
-            headers=headers,
+            headers=merged_headers,
         )
-        return req
+        return req, proxies
 
     def _send(
-        self, request: "RequestsRequest", curl_request: "CurlRequest"
+            self, request: "RequestsRequest", curl_request: "CurlRequest", proxies: typing.Dict[str, str]
     ) -> "RequestsResponse":
+
         with requests.Session() as s:
             response = s.send(
-                request.prepare(), allow_redirects=curl_request.follow_redirects
+                request.prepare(),
+                allow_redirects=curl_request.follow_redirects,
+                proxies=proxies
             )
+
         return response
 
     def handle_curl(self, request: "CurlRequest") -> "CurlResponse":
         from ._curl import CurlResponse
 
-        requests_request = self._convert_request(curl_request=request)
-        response = self._send(request=requests_request, curl_request=request)
+        requests_request, proxies = self._convert_request(curl_request=request)
+        response = self._send(request=requests_request, curl_request=request, proxies=proxies)
         return CurlResponse(
             status_code=response.status_code,
             reason=response.reason,

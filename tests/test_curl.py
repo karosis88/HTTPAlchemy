@@ -1,13 +1,13 @@
 import pytest
 
-from src._curl import create_curl_request
-from src._curl import curl
-from src._curl import normalize_auth
-from src._curl import normalize_forms
-from src._curl import normalize_header_and_form
-from src._curl import normalize_headers
-from src._exceptions import IncompatibleTypeError
-from src._exceptions import RepeatedAliasesError
+from httpalchemy._curl import create_curl_request
+from httpalchemy._curl import curl
+from httpalchemy._curl import normalize_auth
+from httpalchemy._curl import normalize_forms
+from httpalchemy._curl import normalize_header_and_form
+from httpalchemy._curl import normalize_headers
+from httpalchemy._exceptions import IncompatibleTypeError
+from httpalchemy._exceptions import RepeatedAliasesError
 
 
 def test_repeated_options():

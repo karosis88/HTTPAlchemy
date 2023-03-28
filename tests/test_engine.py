@@ -1,6 +1,7 @@
 from tempfile import NamedTemporaryFile
-
-from src._curl import curl
+from httpalchemy._engines import requestsEngine
+from httpalchemy._curl import curl
+from httpalchemy._curl import create_curl_request
 
 
 def test_requests_simple_request(SERVER_URL):
@@ -15,7 +16,7 @@ def test_requests_body_sending(ECHO_BODY_URL):
 
     assert "Content-Type" in resp.raw.request.headers
     assert (
-        resp.raw.request.headers["Content-Type"] == "application/x-www-form-urlencoded"
+            resp.raw.request.headers["Content-Type"] == "application/x-www-form-urlencoded"
     )
 
     resp = curl(ECHO_BODY_URL, _X="POST")
@@ -27,12 +28,12 @@ def test_requests_multipart_sending(FILE_UPLOAD_URL):
         f.write(b"test-data")
         resp = curl(FILE_UPLOAD_URL, _F=[f"file=@{f.name}"], _X="POST")
         assert resp.status_code == 200
-        assert resp.text() == "9"  # length of the data which was sent
+        assert resp.text == "9"  # length of the data which was sent
 
 
 def test_requests_multipart_sending_multiple_files(FILES_UPLOAD_URL):
     with NamedTemporaryFile(mode="wb+", buffering=0) as f, NamedTemporaryFile(
-        mode="wb+", buffering=0
+            mode="wb+", buffering=0
     ) as f1:
         f.write(b"test-data")
         f1.write(b"test_data1")
@@ -40,7 +41,7 @@ def test_requests_multipart_sending_multiple_files(FILES_UPLOAD_URL):
             FILES_UPLOAD_URL, _F=[f"file=@{f.name}", f"file1=@{f1.name}"], _X="POST"
         )
         assert resp.status_code == 200
-        assert resp.text() == "19"  # length of the data which was sent
+        assert resp.text == "19"  # length of the data which was sent
 
 
 def test_requests_headers_building(ECHO_HEADERS):
@@ -54,3 +55,19 @@ def test_requests_json_request(JSON_URL):
     )
     assert resp.ok()
     assert resp.json() == {"test": "test"}
+
+
+def test_requests_proxy(monkeypatch):
+    import httpalchemy.config
+    monkeypatch.setattr(httpalchemy.config, "HTTP_PROXY", "http://example.com")
+    engine = requestsEngine()
+    curl_request = create_curl_request("http://example.com")
+    _, proxies = engine._convert_request(curl_request=curl_request)
+    assert proxies == {"http": "http://example.com"}
+
+    monkeypatch.setattr(httpalchemy.config, "HTTPS_PROXY", "https://example.com")
+    curl_request = create_curl_request("http://example.com")
+    _, proxies = engine._convert_request(curl_request=curl_request)
+    assert proxies == {"http": "http://example.com",
+                              "https": "https://example.com"}
+
