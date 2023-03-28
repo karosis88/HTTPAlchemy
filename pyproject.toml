@@ -22,7 +22,9 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: Implementation :: CPython",
 ]
-dependencies = []
+dependencies = [
+  "requests"
+]
 dynamic = ["version"]
 
 [project.urls]
@@ -31,4 +33,4 @@ Issues = "https://github.com//karosis88/httpalchemy/httpalchemy/issues"
 Source = "https://github.com//karosis88/httpalchemy/httpalchemy"
 
 [tool.hatch.version]
-path = "src/__version__.py"
+path = "httpalchemy/__version__.py"

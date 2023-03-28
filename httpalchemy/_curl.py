@@ -66,14 +66,29 @@ class CurlResponse:
     def ok(self) -> bool:
         return self.status_code // 100 == 2
 
+    @property
     def text(self) -> str:
         return self.raw.text
 
     def json(self) -> str:
         return self.raw.json()
 
+    def raise_for_status(self) -> None:
+        return self.raw.raise_for_status()
+
+    def iter_lines(self):
+        yield from self.raw.iter_lines()
+
+    @property
+    def encoding(self):
+        return self.raw.encoding
+
+    @property
+    def content(self):
+        return self.raw.content
+
     def __repr__(self):
-        return "<CurlResponse [%d %s]>" % self.status_code, self.reason
+        return "<CurlResponse [%d %s]>" % (self.status_code, self.reason)
 
 
 def normalize_header_and_form(
@@ -241,7 +256,7 @@ def curl(
                 "aliases, only one of them can be used." % (option, option_alias)
             )
             raise RepeatedAliasesError(msg)
-        locals()[option] = locals()[option] or locals()[option_alias]
+        locals()[option] = locals()[option_alias] or locals()[option]
 
     curl_request = create_curl_request(
         url,
